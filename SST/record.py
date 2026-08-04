@@ -17,4 +17,4 @@ sd.wait()
 
 write("audio/test.wav", fs, recording)
 
-print("錄音完成！")ㄋ
+print("錄音完成！")
