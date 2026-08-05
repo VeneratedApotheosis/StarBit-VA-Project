@@ -17,13 +17,13 @@ def ask_agent(agent: Agent, question: str):
 
 def main():
     agent = Agent(
-        model=Ollama(id="llama3.2"),
+        model=Ollama(id="gemma-ablitard-q6"),
         tools=[WebSearchTools()],
         instructions="Use the websearch tool to help answer user inquiries. max_results field of the websearch tool must be specified and an integer.",  
         tool_hooks=[logger_hook], 
         markdown=True,
     )
-    print(ask_agent(agent ,"who won world cup 2026?"))  
+    print(ask_agent(agent,"who won 2026 soccor world cup?"))
 
 if __name__ == "__main__":
     main()
