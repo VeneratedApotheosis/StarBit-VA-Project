@@ -7,17 +7,24 @@ from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 from pipecat.observers.loggers.transcription_log_observer import TranscriptionLogObserver
 from pipecat.observers.loggers.debug_log_observer import DebugLogObserver
 
+from pipecat.services.ollama import OLLamaLLMService, OLLamaLLMSettings
+
+llm = OLLamaLLMService(
+    model="llama3.2",
+)
+
 async def main():
     #pipeline declaration
     pipeline = Pipeline([
+        llm,
     ])
 
     observers = [
         # catches and logs TranscriptionFrame outputs
         TranscriptionLogObserver(),
 
-        # catches and logs VAD output frames (UserStartedSpeakingFrame / UserStoppedSpeakingFrame)
-        DebugLogObserver(frame_types=(UserStartedSpeakingFrame, UserStoppedSpeakingFrame))
+        # catches and logs specified frames 
+        DebugLogObserver(frame_types=())
     ]
 
     worker = PipelineWorker(
@@ -25,7 +32,6 @@ async def main():
         params=PipelineParams(
             allow_interruptions=True,
             enable_metrics=True,
-            vad_analyzer=vad_analyzer, 
             observers=observers,
         )
     )
