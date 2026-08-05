@@ -10,9 +10,10 @@ dependencies = [
     "nltk>=3.10.1",
     "ollama>=0.6.2",
     "openai>=2.47.0",
-    "pipecat-ai[local,silero,whisper]>=1.7.0",
+    "pipecat-ai[kokoro,local,silero,whisper]>=1.7.0",
     "python-dotenv>=1.2.2",
     "regex>=2026.7.19",
+    "requests>=2.34.2",
     "sounddevice>=0.5.5",
 ]
 
