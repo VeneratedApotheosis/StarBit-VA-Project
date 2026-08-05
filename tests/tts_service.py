@@ -9,7 +9,6 @@ def create_tts() -> KokoroTTSService:
     """建立免費、本機執行的中文 Kokoro TTS。"""
 
     return KokoroTTSService(
-        sample_rate=SAMPLE_RATE,
         settings=KokoroTTSService.Settings(
             voice="zf_xiaobei",
             language="cmn",
