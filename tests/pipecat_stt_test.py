@@ -30,9 +30,10 @@ transport = LocalAudioTransport(
 
 # 2. config whisper using settings
 stt = WhisperSTTService(
-        settings=WhisperSTTService.Settings(
+    settings=WhisperSTTService.Settings(
             # options: TINY, BASE, SMALL, MEDIUM, LARGE_V3_TURBO
-        model=Model.BASE.value, 
+            # instaalled: base, medium
+        model=Model.MEDIUM.value, 
 
         # select lang
         language=Language.ZH_TW,    
@@ -42,8 +43,8 @@ stt = WhisperSTTService(
     ),
 
     # hardware configuration
-    device="gpu", # gpu / cpu
-    compute_type="int8",   # int8 / float16 to optimize memory
+    device="auto", # cuda / cpu | requires cublas installation for cuda
+    compute_type="float16",   # int8 / float16 to optimize memory
 )
 
 # 3. config silero vad

@@ -1,4 +1,5 @@
 import asyncio
+from fastapi import FastAPI, WebSocket
 
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.workers.runner import WorkerRunner
@@ -6,17 +7,40 @@ from pipecat.pipeline.worker import PipelineParams, PipelineWorker
 
 from pipecat.observers.loggers.transcription_log_observer import TranscriptionLogObserver
 from pipecat.observers.loggers.debug_log_observer import DebugLogObserver
+from pipecat.frames.frames import LLMTextFrame, TranscriptionFrame
 
-from pipecat.services.ollama import OLLamaLLMService, OLLamaLLMSettings
+from pipecat.services.ollama.llm import OLLamaLLMService
+from pipecat.transports.websocket.fastapi import FastAPIWebsocketTransport, FastAPIWebsocketParams
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
 
-llm = OLLamaLLMService(
-    model="llama3.2",
-)
+app = FastAPI()
 
-async def main():
-    #pipeline declaration
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    # Define text-only WebSocket transport
+    transport = FastAPIWebsocketTransport(
+        websocket=websocket,
+        params=FastAPIWebsocketParams(
+            audio_in_enabled=False,
+            audio_out_enabled=False,
+            serializer=ProtobufFrameSerializer(),
+        )
+    )
+
+    # Configure OLLama Service
+    llm = OLLamaLLMService(
+        settings=OLLamaLLMService.Settings(
+            model="llama3.2",
+        )
+    )
+
+    # pipeline declaration with text input and output transport layers
     pipeline = Pipeline([
-        llm,
+        transport.input(),   # Receives text frames from client
+        llm,                 # Generates LLM response frames
+        transport.output(),  # Sends text frames back to client
     ])
 
     observers = [
@@ -24,7 +48,7 @@ async def main():
         TranscriptionLogObserver(),
 
         # catches and logs specified frames 
-        DebugLogObserver(frame_types=())
+        DebugLogObserver(frame_types=(LLMTextFrame, TranscriptionFrame))
     ]
 
     worker = PipelineWorker(
@@ -48,6 +72,3 @@ async def main():
         print("Shutting down...")
     finally:
         pass
-
-if __name__ == "__main__":
-    asyncio.run(main())

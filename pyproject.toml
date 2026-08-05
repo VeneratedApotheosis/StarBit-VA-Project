@@ -7,14 +7,16 @@ requires-python = ">=3.12"
 dependencies = [
     "agno>=2.8.0",
     "ddgs>=9.14.4",
+    "fastapi>=0.141.1",
     "nltk>=3.10.1",
     "ollama>=0.6.2",
     "openai>=2.47.0",
-    "pipecat-ai[kokoro,local,silero,whisper]>=1.7.0",
+    "pipecat-ai[kokoro,local,silero,websocket,whisper]>=1.7.0",
     "python-dotenv>=1.2.2",
     "regex>=2026.7.19",
     "requests>=2.34.2",
     "sounddevice>=0.5.5",
+    "uvicorn>=0.52.1",
 ]
 
 [dependency-groups]
