@@ -1,21 +1,21 @@
 import queue
+
+import numpy as np
 import sounddevice as sd
 
-# 音訊設定
-fs = 16000
-block_size = 1600  # 1600 ÷ 16000 = 每次接收 0.1 秒聲音
 
-# 暫時存放音訊的小盒子
+fs = 16000
+block_size = 1600
+
 audio_queue = queue.Queue()
 
 
 def audio_callback(indata, frames, time_info, status):
-    """麥克風每收到一小段聲音，就會執行這個函式。"""
+    """每收到一小段麥克風聲音，就放進佇列。"""
 
     if status:
         print("麥克風狀態：", status)
 
-    # 將這一小段聲音放進 queue
     audio_queue.put(indata.copy())
 
 
@@ -27,17 +27,17 @@ try:
         channels=1,
         dtype="int16",
         blocksize=block_size,
-        callback=audio_callback
+        callback=audio_callback,
     ):
         while True:
-            # 取出一小段麥克風聲音
             audio_chunk = audio_queue.get()
 
-            print("收到一小段聲音：", audio_chunk.shape)
+            volume = np.sqrt(
+                np.mean(audio_chunk.astype(np.float32) ** 2)
+            )
 
-            # 下一步會把音訊傳給 STT
-            # audio_bytes = audio_chunk.tobytes()
-            # 傳送給STT(audio_bytes)
+            if volume > 500:
+                print("偵測到說話，音量：", int(volume))
 
 except KeyboardInterrupt:
     print("\n已停止收音。")
