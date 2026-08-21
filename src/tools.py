@@ -15,6 +15,31 @@ async def get_current_weather(params: FunctionCallParams, location: str, format:
     await asyncio.sleep(1)
     await params.result_callback({"conditions": "nice", "temperature": "75"})
 
+@tool_options(cancel_on_interruption=True, timeout_secs=30)
+async def test_tool_1(params: FunctionCallParams):
+    """Test tool 1, returns a specific string to validate the tool calling
+
+    Args:
+        No args.
+    """
+
+    await asyncio.sleep(1)
+    await params.result_callback({"result": "10012"})
+
+@tool_options(cancel_on_interruption=True, timeout_secs=30)
+async def test_tool_2(params: FunctionCallParams):
+    """Test tool 2, returns a specific string to validate the tool calling
+
+    Args:
+        No args.
+    """
+
+    await asyncio.sleep(1)
+    await params.result_callback({"result": "50052"})
+
 
 def get_tools():
     return [get_current_weather]
+
+def get_test_tools():
+    return [test_tool_1, test_tool_2]
