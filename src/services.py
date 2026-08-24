@@ -12,7 +12,7 @@ from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.services.piper.tts import PiperTTSService, PiperTTSSettings
 
 from tools import get_tools
-import tools
+import tools as tools
 
 def create_stt_service() -> WhisperSTTService:
     # config whisper using settings

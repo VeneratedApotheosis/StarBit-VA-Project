@@ -32,5 +32,5 @@ Refactor code in http client, added fetch_json boilerplate, changed structure wh
 Refactor code in tools, added safe_tool decorator boilerplate, added exception handling.
 Initial tool of 'get_time_tool' is added, works fine.
 First API tool to implement is 'get_geocoding_tool', tool adapter is being tested.
-There was an error in the initial tool adapter, where llm output is ungenerated after api tool was called, debugging.
+There was an error in the initial tool adapter, where llm output is un-generated after api tool was called, debugging.
 

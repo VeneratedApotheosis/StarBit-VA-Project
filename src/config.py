@@ -42,7 +42,7 @@ class Config:
     MIN_VOLUME = 0.4
 
     # LLM Settings
-    LLM_MODEL = "llama3.2"
+    LLM_MODEL = "qwen3.5-uncensored:latest"
 
     # TTS Settings
     TTS_MODEL_PATH = Path("./models/piper")

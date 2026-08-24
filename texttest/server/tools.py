@@ -68,11 +68,42 @@ async def get_geocode_tool(params: FunctionCallParams, place: str):
     """
     raw_data = await utility.get_geocode(place=place)
     
-    allowed_keys = {'name','longitude','latitude',}
-    formatted = pick_keys(raw_data,allowed_keys)
-    print(formatted)
+    # get_geocode returns a list of results; take the first one
+    if not raw_data or len(raw_data) == 0:
+        raise utility.LocationNotFoundError(f"No coordinates for '{place}'")
+    
+    # extract dict
+    result_dict = raw_data[0]
+    
+    # pruning
+    allowed_keys = {'name', 'longitude', 'latitude'}
+    formatted = pick_keys(result_dict,allowed_keys)
+    
     await params.result_callback(formatted)
     
+@register_tool
+@tool_options(cancel_on_interruption=False, timeout_secs=30)
+@safe_tool
+async def get_geocode_tool(params: FunctionCallParams, place: str):
+    """Searches for geographic coordinates (latitude and longitude) given a location name.
+    
+    Args:
+        place: The name of the city, region, or landmark to geocode (e.g., 'Paris, France' or 'Tokyo').
+    """
+    raw_data = await utility.get_geocode(place=place)
+    
+    # get_geocode returns a list of results; take the first one
+    if not raw_data or len(raw_data) == 0:
+        raise utility.LocationNotFoundError(f"No coordinates for '{place}'")
+    
+    # extract dict
+    result_dict = raw_data[0]
+    
+    # pruning
+    allowed_keys = {'name', 'longitude', 'latitude'}
+    formatted = pick_keys(result_dict,allowed_keys)
+    
+    await params.result_callback(formatted)
 
 # ---------------------------------------------------------------------------- #
 #                                 Test / Debug                                 #
