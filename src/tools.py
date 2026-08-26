@@ -2,14 +2,13 @@ import asyncio
 import functools
 import aiohttp
 import utility
-import http_client
 
 from pipecat.adapters.schemas.direct_function import tool_options
 from pipecat.services.llm_service import FunctionCallParams
 
 REGISTERED_TOOLS = []
 # ---------------------------------------------------------------------------- #
-#                                  Boilerplate                                 #
+#                          Boilerplate / Helper Funcs                          #
 # ---------------------------------------------------------------------------- #
 def register_tool(func):
     REGISTERED_TOOLS.append(func)
@@ -22,9 +21,15 @@ def safe_tool(func):
         try:
             # Run the actual tool function
             return await func(*args, **kwargs)
+        
+        # exception wrapper
         except Exception as e:
             match e:
+                case utility.LocationNotFoundError() | utility.ForecastNotFoundError():
+                    error_msg = str(e)
                 case utility.LocationNotFoundError():
+                    error_msg = str(e)
+                case utility.SearchNotFoundError():
                     error_msg = str(e)
                 case asyncio.TimeoutError():
                     error_msg = "The service timed out while responding."
@@ -66,38 +71,82 @@ async def get_geocode_tool(params: FunctionCallParams, place: str):
     Args:
         place: The name of the city, region, or landmark to geocode (e.g., 'Paris, France' or 'Tokyo').
     """
-    raw_data = await utility.get_geocode(place=place)
+    geo_data = await utility.get_geocode(place=place)
     
-    # get_geocode returns a list of results; take the first one
-    if not raw_data or len(raw_data) == 0:
-        raise utility.LocationNotFoundError(f"No coordinates for '{place}'")
-    
-    result_dict = raw_data[0]
+    # pruning
     allowed_keys = {'name', 'longitude', 'latitude'}
-    formatted = pick_keys(result_dict,allowed_keys)
-    print(formatted)
-    await params.result_callback(formatted)
+    pruned_data = pick_keys(geo_data,allowed_keys)
     
-
-# ---------------------------------------------------------------------------- #
-#                                 Test / Debug                                 #
-# ---------------------------------------------------------------------------- #
+    await params.result_callback(pruned_data)
+    
 @register_tool
 @tool_options(cancel_on_interruption=False, timeout_secs=30)
-async def test_1_tool(params: FunctionCallParams):
-    """a testing tool, returns a specific string to validate the tool calling"""
+@safe_tool
+async def get_current_forecast_tool(params: FunctionCallParams, place: str, ):
+    """Provides the CURRENT weather forecast at given place. 
+    
+    Returns current weather forecast including 'weather_description', 'temperature', 'apparent_temperature', 'relative_humidity', 'wind_speed', 'cloud_cover', and 'precipitation'.
+    
+    Args:
+        place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
+    """
+    
+    # fetch relevant geographic data
+    geo_data = await utility.get_geocode(place=place)
 
-    await asyncio.sleep(1)
-    await params.result_callback({"result": "10012"})
-
+    # fetch forecast
+    latitude = geo_data["latitude"]
+    longitude = geo_data["longitude"]
+    forecast_data = await utility.get_current_weather(latitude,longitude)
+    
+    await params.result_callback(forecast_data)
 
 @register_tool
 @tool_options(cancel_on_interruption=False, timeout_secs=30)
-async def test_2_tool(params: FunctionCallParams):
-    """a testing tool, returns a specific string to validate the tool calling"""
+@safe_tool
+async def get_daily_forecast_tool(params: FunctionCallParams, place: str, start_date: str, end_date: str):
+    """Provides daily weather forecasts over a range of dates for a specified location.
 
-    await asyncio.sleep(1)
-    await params.result_callback({"result": "50052"})
+    Returns daily metrics including weather description, maximum temperature, 
+    minimum temperature, total precipitation, and maximum wind speed for each day 
+    between the start and end dates.
 
+    Args:
+        place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
+        start_date: The start date of the forecast range in 'YYYY-MM-DD' format.
+        end_date: The end date of the forecast range in 'YYYY-MM-DD' format.
+    """
+    
+    # fetch relevant geographic data
+    geo_data = await utility.get_geocode(place=place)
+
+    # fetch forecast
+    latitude = geo_data["latitude"]
+    longitude = geo_data["longitude"]
+    forecast_data = await utility.get_daily_weather(
+        latitude,
+        longitude,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    await params.result_callback(forecast_data)
+    
+@register_tool
+@tool_options(cancel_on_interruption=False, timeout_secs=15)
+@safe_tool
+async def web_search_tool(params: FunctionCallParams, query: str):
+    """Searches the web for real-time information, current facts, news, or specific topics. This is however limited by the inability to access webpages, so if dynamic elements need to be rendered in order to received the correct information (eg. stock prices) you will be unable to find those information.
+
+    Use this tool when answering questions about events, facts, or data that require up-to-date web access.
+
+    Args:
+        query: Concise, keyword-driven search terms (e.g., 'FIFA World Cup 2026 winner'.
+    """
+    # search utility
+    search_results = await utility.perform_web_search(query=query)
+
+    await params.result_callback(search_results)
+    
 def get_tools():
     return REGISTERED_TOOLS

@@ -61,7 +61,7 @@ def create_llm_context():
     # inject system prompt
     context.add_message({
         "role": "system",
-        "content": "You are a helpful AI Voice assistant. Answer concisely. By default, try to answer in Engllish. Utilize tools provided to you if utilizing the tools helps completing the prompt."
+        "content": Config.SYSTEM_PROMPT
     })
 
     return context

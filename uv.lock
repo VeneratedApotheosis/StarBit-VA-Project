@@ -205,6 +205,21 @@ wheels = [
 ]
 
 [[package]]
+name = "asyncddgs"
+version = "0.1.0a1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "fastapi" },
+    { name = "lxml" },
+    { name = "uvicorn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/b1/e9edf63c9a331a57c6e439d133b2c62804177a5897ee79134de2e0e5c42e/asyncddgs-0.1.0a1.tar.gz", hash = "sha256:3f8e10feada699ab1b39a4716f08a65104c07de13ba059fc34edc7cc86aa313c", size = 49598, upload-time = "2025-04-01T09:35:03.463Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/27/35a27643bfc737f836bc721ff9a98a9343a20a65a673bda71f2698b768c3/asyncddgs-0.1.0a1-py3-none-any.whl", hash = "sha256:4eeb32d08ab0347934c8487d2977a66f0f5ccf12e2c00a11ad8e927bff5e1595", size = 31657, upload-time = "2025-04-01T09:35:00.922Z" },
+]
+
+[[package]]
 name = "attrs"
 version = "26.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2957,6 +2972,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "agno" },
+    { name = "asyncddgs" },
     { name = "ddgs" },
     { name = "fastapi" },
     { name = "nltk" },
@@ -2982,6 +2998,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "agno", specifier = ">=2.8.0" },
+    { name = "asyncddgs", specifier = ">=0.1.0a1" },
     { name = "ddgs", specifier = ">=9.14.4" },
     { name = "fastapi", specifier = ">=0.141.1" },
     { name = "nltk", specifier = ">=3.10.1" },

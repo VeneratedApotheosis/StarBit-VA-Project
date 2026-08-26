@@ -61,7 +61,7 @@ def create_llm_context():
     # inject system prompt
     context.add_message({
         "role": "system",
-        "content": "You are a helpful AI Voice assistant. DO NOT OUTPUT MARKDOWN. STRICTLY output in the format of PLAIN ENGLISH sentences that sound natural when spoken. Answer concisely. By default, try to answer in english."
+        "content": Config.SYSTEM_PROMPT
     })
 
     return context
