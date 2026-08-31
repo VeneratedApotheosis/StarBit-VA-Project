@@ -1,28 +1,19 @@
-import asyncio
-
 from pipecat.processors.audio.vad_processor import VADProcessor
-
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.workers.runner import WorkerRunner
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
-
+from pipecat.observers.loggers.debug_log_observer import DebugLogObserver
+from pipecat.transports.base_transport import BaseTransport
 from pipecat.observers.loggers.transcription_log_observer import (
     TranscriptionLogObserver,
 )
-from pipecat.observers.loggers.debug_log_observer import DebugLogObserver
 from pipecat.frames.frames import (
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
 
-from pipecat.transports.local.audio import (
-    LocalAudioTransport,
-    LocalAudioTransportParams,
-)
+import asyncio
 
-from pipecat.transports.base_transport import BaseTransport
-
-from config import Config
 from debug import LLMResponsePrinter
 import services
 
@@ -94,15 +85,7 @@ async def run_bot(transport: BaseTransport) -> None:
 
 async def main():
     # config audio transport
-    transport = LocalAudioTransport(
-        LocalAudioTransportParams(
-            audio_in_enabled=True,
-            audio_in_sample_rate=Config.AUDIO_SAMPLE_RATE,  # silero expects 8kHz or 16000Hz (16k recommended)
-            audio_out_enabled=True,
-            audio_out_sample_rate=Config.AUDIO_SAMPLE_RATE,
-        )
-    )
-
+    transport = services.create_transport()
     await run_bot(transport)
 
 

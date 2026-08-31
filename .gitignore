@@ -221,3 +221,10 @@ node_modules/
 # MODEL FILES
 *.onnx
 *.onnx.json
+*.bin
+
+# ignore special package
+g2pW/
+
+# git keep allowed
+!**/.gitkeep

@@ -85,3 +85,5 @@ async def tool_name(params: FunctionCallParams, ...):
 - utilizes 'http_client.py' which contains boilerplate code for using aiohttp.
 
 utility contains logic and implementation, tools contains control flow and tool definitions.
+
+IMPLEMENTED MARKDOWN FILTER

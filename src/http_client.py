@@ -17,10 +17,21 @@ async def close_shared_session():
     if _shared_session and not _shared_session.closed:
         await _shared_session.close()
 
+# ---------------------------------------------------------------------------- #
+#                               actual functions                               #
+# ---------------------------------------------------------------------------- #
 async def fetch_json(url: str, params: dict, timeout_secs: float = 5.0) -> dict:
     session = await get_shared_session()
     timeout = aiohttp.ClientTimeout(total=timeout_secs)
     
     async with session.get(url, params=params, timeout=timeout) as response:
         response.raise_for_status()  # Raises aiohttp.ClientResponseError for 4xx/5xx
+        return await response.json()
+    
+async def post_json(url: str, headers: dict, json_payload: dict, timeout_secs: float = 5.0) -> dict:
+    session = await get_shared_session()
+    timeout = aiohttp.ClientTimeout(total=timeout_secs)
+    
+    async with session.post(url, headers=headers, json=json_payload, timeout=timeout) as response:
+        response.raise_for_status()
         return await response.json()

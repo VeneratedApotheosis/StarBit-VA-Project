@@ -65,13 +65,14 @@ async def get_time_tool(params: FunctionCallParams):
 @register_tool
 @tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
-async def get_geocode_tool(params: FunctionCallParams, place: str):
-    """Searches for geographic coordinates (latitude and longitude) given a location name.
+async def get_geocode_tool(params: FunctionCallParams, place: str, language: str):
+    """Searches for geographic coordinates (latitude and longitude) given a location name (and optionally language of the place string). 
     
     Args:
         place: The name of the city, region, or landmark to geocode (e.g., 'Paris, France' or 'Tokyo').
+        language: Two-letter ISO language code you wrote parameters in (e.g., 'en', 'zh').
     """
-    geo_data = await utility.get_geocode(place=place)
+    geo_data = await utility.get_geocode(place=place, language=language)
     
     # pruning
     allowed_keys = {'name', 'longitude', 'latitude'}
@@ -82,17 +83,18 @@ async def get_geocode_tool(params: FunctionCallParams, place: str):
 @register_tool
 @tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
-async def get_current_forecast_tool(params: FunctionCallParams, place: str, ):
-    """Provides the CURRENT weather forecast at given place. 
+async def get_current_forecast_tool(params: FunctionCallParams, place: str, language: str):
+    """Provides the CURRENT weather forecast at given place (and optionally language of the place string). 
     
     Returns current weather forecast including 'weather_description', 'temperature', 'apparent_temperature', 'relative_humidity', 'wind_speed', 'cloud_cover', and 'precipitation'.
     
     Args:
         place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
+        language: Two-letter ISO language code you wrote the parameters in (e.g., 'en', 'zh').
     """
     
     # fetch relevant geographic data
-    geo_data = await utility.get_geocode(place=place)
+    geo_data = await utility.get_geocode(place=place, language=language)
 
     # fetch forecast
     latitude = geo_data["latitude"]
@@ -104,8 +106,8 @@ async def get_current_forecast_tool(params: FunctionCallParams, place: str, ):
 @register_tool
 @tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
-async def get_daily_forecast_tool(params: FunctionCallParams, place: str, start_date: str, end_date: str):
-    """Provides daily weather forecasts over a range of dates for a specified location.
+async def get_daily_forecast_tool(params: FunctionCallParams, place: str, language: str, start_date: str, end_date: str):
+    """Provides daily weather forecasts over a range of dates for a specified location (and optionally language of the place string).
 
     Returns daily metrics including weather description, maximum temperature, 
     minimum temperature, total precipitation, and maximum wind speed for each day 
@@ -113,12 +115,13 @@ async def get_daily_forecast_tool(params: FunctionCallParams, place: str, start_
 
     Args:
         place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
+        language: Two-letter ISO language code you wrote the parameters in (e.g., 'en', 'zh').
         start_date: The start date of the forecast range in 'YYYY-MM-DD' format.
         end_date: The end date of the forecast range in 'YYYY-MM-DD' format.
     """
     
     # fetch relevant geographic data
-    geo_data = await utility.get_geocode(place=place)
+    geo_data = await utility.get_geocode(place=place, language=language)
 
     # fetch forecast
     latitude = geo_data["latitude"]
