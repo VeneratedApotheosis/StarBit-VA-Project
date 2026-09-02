@@ -1,11 +1,10 @@
 import asyncio
 import functools
-
 import aiohttp
+import utility
+
 from pipecat.adapters.schemas.direct_function import tool_options
 from pipecat.services.llm_service import FunctionCallParams
-
-import utility
 
 REGISTERED_TOOLS = []
 # ---------------------------------------------------------------------------- #
@@ -26,14 +25,18 @@ def safe_tool(func):
         # exception wrapper
         except Exception as e:
             match e:
-                case utility.UtilityError():
+                case utility.LocationNotFoundError() | utility.ForecastNotFoundError():
+                    error_msg = str(e)
+                case utility.LocationNotFoundError():
+                    error_msg = str(e)
+                case utility.SearchNotFoundError():
                     error_msg = str(e)
                 case asyncio.TimeoutError():
                     error_msg = "The service timed out while responding."
                 case aiohttp.ClientError():
                     error_msg = "The external service is currently unreachable."
                 case _:
-                    error_msg = f"An unexpected error occurred: {e!s}"
+                    error_msg = f"An unexpected error occurred: {str(e)}"
             
             if args and isinstance(args[0], FunctionCallParams):
                 params = args[0]
@@ -51,7 +54,7 @@ def pick_keys(source: dict, keys: set | list) -> dict:
 #                                     Tools                                    #
 # ---------------------------------------------------------------------------- #
 @register_tool
-@tool_options(cancel_on_interruption=True, timeout_secs=30)
+@tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
 async def get_time_tool(params: FunctionCallParams):
     """Gets the current time from computer"""
@@ -60,16 +63,15 @@ async def get_time_tool(params: FunctionCallParams):
     await params.result_callback(formatted)
     
 @register_tool
-@tool_options(cancel_on_interruption=True, timeout_secs=30)
+@tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
-async def get_geocode_tool(params: FunctionCallParams, place: str, language: str):
-    """Searches for geographic coordinates (latitude and longitude) given a location name (and optionally language of the place string). 
+async def get_geocode_tool(params: FunctionCallParams, place: str):
+    """Searches for geographic coordinates (latitude and longitude) given a location name.
     
     Args:
         place: The name of the city, region, or landmark to geocode (e.g., 'Paris, France' or 'Tokyo').
-        language: Two-letter ISO language code that argument or parameter "place" was written in  (e.g., 'en', 'zh').
     """
-    geo_data = await utility.get_geocode(place=place, language=language)
+    geo_data = await utility.get_geocode(place=place)
     
     # pruning
     allowed_keys = {'name', 'longitude', 'latitude'}
@@ -78,20 +80,19 @@ async def get_geocode_tool(params: FunctionCallParams, place: str, language: str
     await params.result_callback(pruned_data)
     
 @register_tool
-@tool_options(cancel_on_interruption=True, timeout_secs=30)
+@tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
-async def get_current_forecast_tool(params: FunctionCallParams, place: str, language: str):
-    """Provides the CURRENT weather forecast at given place (and optionally language of the place string). 
+async def get_current_forecast_tool(params: FunctionCallParams, place: str, ):
+    """Provides the CURRENT weather forecast at given place. 
     
     Returns current weather forecast including 'weather_description', 'temperature', 'apparent_temperature', 'relative_humidity', 'wind_speed', 'cloud_cover', and 'precipitation'.
     
     Args:
         place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
-        language: Two-letter ISO language code that argument or parameter "place" was written in (e.g., 'en', 'zh').
     """
     
     # fetch relevant geographic data
-    geo_data = await utility.get_geocode(place=place, language=language)
+    geo_data = await utility.get_geocode(place=place)
 
     # fetch forecast
     latitude = geo_data["latitude"]
@@ -101,10 +102,10 @@ async def get_current_forecast_tool(params: FunctionCallParams, place: str, lang
     await params.result_callback(forecast_data)
 
 @register_tool
-@tool_options(cancel_on_interruption=True, timeout_secs=30)
+@tool_options(cancel_on_interruption=False, timeout_secs=30)
 @safe_tool
-async def get_daily_forecast_tool(params: FunctionCallParams, place: str, language: str, start_date: str, end_date: str):
-    """Provides daily weather forecasts over a range of dates for a specified location (and optionally language of the place string).
+async def get_daily_forecast_tool(params: FunctionCallParams, place: str, start_date: str, end_date: str):
+    """Provides daily weather forecasts over a range of dates for a specified location.
 
     Returns daily metrics including weather description, maximum temperature, 
     minimum temperature, total precipitation, and maximum wind speed for each day 
@@ -112,13 +113,12 @@ async def get_daily_forecast_tool(params: FunctionCallParams, place: str, langua
 
     Args:
         place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
-        language: Two-letter ISO language code that argument or parameter "place" was written in (e.g., 'en', 'zh').
         start_date: The start date of the forecast range in 'YYYY-MM-DD' format.
         end_date: The end date of the forecast range in 'YYYY-MM-DD' format.
     """
     
     # fetch relevant geographic data
-    geo_data = await utility.get_geocode(place=place, language=language)
+    geo_data = await utility.get_geocode(place=place)
 
     # fetch forecast
     latitude = geo_data["latitude"]
@@ -133,7 +133,7 @@ async def get_daily_forecast_tool(params: FunctionCallParams, place: str, langua
     await params.result_callback(forecast_data)
     
 @register_tool
-@tool_options(cancel_on_interruption=True, timeout_secs=15)
+@tool_options(cancel_on_interruption=False, timeout_secs=15)
 @safe_tool
 async def web_search_tool(params: FunctionCallParams, query: str):
     """Searches the web for real-time information, current facts, news, or specific topics. This is however limited by the inability to access webpages, so if dynamic elements need to be rendered in order to received the correct information (eg. stock prices) you will be unable to find those information.
@@ -148,31 +148,5 @@ async def web_search_tool(params: FunctionCallParams, query: str):
 
     await params.result_callback(search_results)
     
-@register_tool
-@tool_options(cancel_on_interruption=True, timeout_secs=15)
-@safe_tool
-async def get_route_tool(params: FunctionCallParams, origin: str, destination: str, travel_mode: str = "DRIVE"):
-    """Calculates the shortest distance and travel duration between origin and destination given mode of transport.
-
-    Args:
-        origin: The starting location string (e.g., 'Taipei 101' or 'New York City').
-        destination: The destination string (e.g., 'Hsinchu City' or 'Boston').
-        travel_mode: Valid modes are 'DRIVE', 'BICYCLE', 'WALK', 'TWO_WHEELER', or 'TRANSIT'. Default is 'DRIVE'.
-    """
-    
-    # utility call
-    route_data = await utility.get_route(
-        origin=origin, 
-        destination=destination,
-        travel_mode=travel_mode
-    )
-    
-    # prune
-    allowed_keys = {'distance_meters', 'duration'}
-    pruned_data = pick_keys(route_data, allowed_keys)
-    
-    await params.result_callback(pruned_data)
-    
 def get_tools():
     return REGISTERED_TOOLS
-

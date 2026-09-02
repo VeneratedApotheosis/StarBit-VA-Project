@@ -1,8 +1,11 @@
 
 import asyncio
-import http_client
 from datetime import datetime, timezone
+
 from asyncddgs import aDDGS
+
+import http_client
+from config import config
 
 # ---------------------------------------------------------------------------- #
 #                             Boilerplate / Helper                             #
@@ -21,6 +24,20 @@ WMO_WEATHER_CODES = {
     85: "Slight snow showers", 86: "Heavy snow showers",
     95: "Thunderstorm", 96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail"
 }
+
+# ---------------------------------------------------------------------------- #
+#                                  Exceptions                                  #
+# ---------------------------------------------------------------------------- #
+class UtilityError(Exception):
+    """Base exception for all domain and service errors originating from utility.py."""
+class LocationNotFoundError(UtilityError):
+    """Raised when a city search returns no results."""
+class ForecastNotFoundError(UtilityError):
+    """Raised when a weather forecast query returns no forecast."""
+class SearchNotFoundError(UtilityError):
+    """Raised when a web search returns no results."""
+class RouteNotFoundError(UtilityError):
+    """Raised when the routing API finds no route between points."""
 
 # ------------------------------- normalization ------------------------------ #
 def format_measurement(field: str, data: dict, units: dict) -> str:
@@ -88,30 +105,30 @@ def normalize_daily(units, daily):
     return normalized_forecast
 
 def normalize_search(raw_results: list[dict]) -> list[dict]:
-    """Normalizes raw search result keys to standard fields ('title', 'url', 'snippet')."""
     FIELD_MAP = {
         "title": "title",
         "url": "href",
         "snippet": "body",
     }
-
+    
     return [
         {target_key: item.get(src_key, "") for target_key, src_key in FIELD_MAP.items()}
         for item in raw_results
     ]
+    
+def normalize_route(route: dict) -> dict:
+    FIELD_MAP = {
+        "distance_meters": "distanceMeters",
+        "duration": "duration",
+    }
 
-# ---------------------------------------------------------------------------- #
-#                                  Exceptions                                  #
-# ---------------------------------------------------------------------------- #
-class LocationNotFoundError(Exception):
-    """Raised when a city search returns no results."""
-    pass
-class ForecastNotFoundError(Exception):
-    """Raised when a weather forecast query returns no forecast."""
-    pass
-class SearchNotFoundError(Exception):
-    """Raised when a web search returns no results."""
-    pass
+    normalized = {
+        target_key: route.get(src_key, "")
+        for target_key, src_key in FIELD_MAP.items()
+    }
+
+    # return normalized
+    return normalized
 # ---------------------------------------------------------------------------- #
 #                                    Utility                                   #
 # ---------------------------------------------------------------------------- #
@@ -123,11 +140,12 @@ async def get_current_time() -> str:
 
 # ------------------------------------ Api ----------------------------------- #
 # Open Meteo #
-async def get_geocode(place: str, count: int = 1) -> dict:
+async def get_geocode(place: str, language: str, count: int = 1) -> dict:
     """Searches for geographic information given a location name."""
     url = "https://geocoding-api.open-meteo.com/v1/search"
     params = {
         "name": place,
+        "language": language,
         "count": count,
     }
     # fetch
@@ -142,7 +160,7 @@ async def get_geocode(place: str, count: int = 1) -> dict:
     geo_data = results[0]
     
     # return payload if everything is fine
-    return geo_data  
+    return geo_data
 
 async def get_current_weather(
     latitude: float, 
@@ -222,14 +240,10 @@ async def get_daily_weather(
 # DuckDuckGo #
 async def perform_web_search(query: str, max_results: int = 3) -> list[dict]:
     """Asynchronously searches the web using DuckDuckGo and returns normalized snippets."""
-    try:
-        # Initialize the async client and fetch results
-        async with aDDGS() as ddgs:
-            # .text() is the standard text search method in DDGS
-            raw_results = await ddgs.text(query, max_results=max_results)
-    except Exception as e:
-        # Catch rate limits or network issues from the DDG library
-        raise Exception(f"Search provider error: {str(e)}")
+    # Initialize the async client and fetch results
+    async with aDDGS() as ddgs:
+        # .text() is the standard text search method in DDGS
+        raw_results = await ddgs.text(query, max_results=max_results)
 
     # Raise our custom error if the list is empty or None
     if not raw_results:
@@ -241,18 +255,105 @@ async def perform_web_search(query: str, max_results: int = 3) -> list[dict]:
     # Return payload if everything is fine
     return normalized
 
-# # ---------------------------------------------------------------------------- #
-# #                                     debug                                    #
-# # ---------------------------------------------------------------------------- #
-# async def mainfr():
-#     # geo_data = await get_geocode(place="taipei")
+# Google #
+async def get_route(origin: str, destination: str, travel_mode: str = "DRIVE") -> dict:
+    """Fetches the optimal route between two points using Google Routes API v2."""
+    url = "https://routes.googleapis.com/directions/v2:computeRoutes"
     
-#     # forecast = await get_daily_weather(latitude=geo_data["latitude"], longitude=geo_data["longitude"], start_date="2026-08-25", end_date="2026-08-29")
-#     # # Properly close connections before exiting
-#     # print(forecast)
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": config.google_routes_api_key,
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters",
+    }
     
-#     r = await perform_web_search("stock price of nvidia right now")
-#     print(r)
-#     await http_client.close_shared_session()
+    payload = {
+        "origin": {"address": origin},
+        "destination": {"address": destination},
+        "travelMode": travel_mode,
+        "routingPreference": "TRAFFIC_AWARE"
+    }
+    
+    # fetch raw response
+    raw_response = await http_client.post_json(url, headers=headers, json_payload=payload)
+    
+    routes = raw_response.get("routes")
+    
+    # raise error
+    if not routes:
+        raise RouteNotFoundError(f"No route found from '{origin}' to '{destination}' via {travel_mode}.")
+    
+    # extract domain payload and normalize
+    normalized = normalize_route(routes[0])
+    
+    # return payload if everything is fine
+    return normalized
 
-# asyncio.run(mainfr())
+async def mainfr():
+    print("=== Testing Utility Functions ===")
+
+    # # 1. Test get_current_time
+    # try:
+    #     print("\n--- Testing get_current_time ---")
+    #     time_res = await get_current_time()
+    #     print(f"[Success] {time_res}")
+    # except Exception as e:
+    #     print(f"[Error] {type(e).__name__}: {e}")
+
+    # 2. Test get_geocode
+    lat, lon = None, None
+    try:
+        print("\n--- Testing get_geocode ---")
+        geo_res = await get_geocode(place="hsinchu", language="en")
+        print(f"[Success] {geo_res}")
+        lat = geo_res.get("latitude")
+        lon = geo_res.get("longitude")
+    except Exception as e:
+        print(f"[Error] {type(e).__name__}: {e}")
+
+    # # 3. Test get_current_weather
+    # if lat is not None and lon is not None:
+    #     try:
+    #         print("\n--- Testing get_current_weather ---")
+    #         current_weather_res = await get_current_weather(latitude=lat, longitude=lon)
+    #         print(f"[Success] {current_weather_res}")
+    #     except Exception as e:
+    #         print(f"[Error] {type(e).__name__}: {e}")
+    # else:
+    #     print("\n[Skipped] get_current_weather: Missing coordinates from get_geocode")
+
+    # # 4. Test get_daily_weather
+    # if lat is not None and lon is not None:
+    #     try:
+    #         print("\n--- Testing get_daily_weather ---")
+    #         daily_weather_res = await get_daily_weather(latitude=lat, longitude=lon)
+    #         print(f"[Success] {daily_weather_res}")
+    #     except Exception as e:
+    #         print(f"[Error] {type(e).__name__}: {e}")
+    # else:
+    #     print("\n[Skipped] get_daily_weather: Missing coordinates from get_geocode")
+
+    # # 5. Test perform_web_search
+    # try:
+    #     print("\n--- Testing perform_web_search ---")
+    #     search_res = await perform_web_search(query="Python asyncio news", max_results=2)
+    #     print(f"[Success] {search_res}")
+    # except Exception as e:
+    #     print(f"[Error] {type(e).__name__}: {e}")
+
+    # # 6. Test get_route
+    # try:
+    #     print("\n--- Testing get_route ---")
+    #     route_res = await get_route(
+    #         origin="Starbit Taipei Office",
+    #         destination="Hsinchu Science Park",
+    #         travel_mode="DRIVE"
+    #     )
+    #     print(f"[Success] {route_res}")
+    # except Exception as e:
+    #     print(f"[Error] {type(e).__name__}: {e}")
+
+    # Clean up connections
+    await http_client.close_shared_session()
+
+if __name__ == "__main__":
+    asyncio.run(mainfr())

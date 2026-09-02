@@ -1,33 +1,27 @@
-from config import config
-import tools as tools
-
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
-
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
-from pipecat.turns.user_turn_strategies import UserTurnStrategies
-from pipecat.turns.user_start import VADUserTurnStartStrategy
-from pipecat.turns.user_start import WakePhraseUserTurnStartStrategy
-from pipecat.turns.user_start import (
-    KrispVivaIPUserTurnStartStrategy,
-    TranscriptionUserTurnStartStrategy,
-)
-from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
-
-from pipecat.services.ollama.llm import OLLamaLLMService
-from pipecat.services.whisper.stt import WhisperSTTService
-from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
-from pipecat.services.piper.tts import PiperTTSService, PiperTTSSettings
 from pipecat.services.kokoro.tts import KokoroTTSService
-
+from pipecat.services.ollama.llm import OLLamaLLMService
+from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.piper.tts import PiperTTSService, PiperTTSSettings
+from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.transports.local.audio import (
     LocalAudioTransport,
     LocalAudioTransportParams,
 )
+from pipecat.turns.user_start import WakePhraseUserTurnStartStrategy
+from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
+from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
+
+import tools
+from config import config
+
 
 def create_stt_service() -> WhisperSTTService:
     stt = WhisperSTTService(
@@ -54,44 +48,45 @@ def create_vad_analyzer() -> SileroVADAnalyzer:
     )
     return vad_analyzer
 
-
-def create_llm_context():
+def create_llm_aggregators(vad_analyzer: SileroVADAnalyzer):
     context = LLMContext(
         tools=tools.get_tools()
     )
-    context.add_message({
-        "role": "system",
-        "content": config.system_prompt
-    })
-    return context
-
-
-def create_llm_aggregators(context: LLMContext, vad_analyzer: SileroVADAnalyzer):
+    
     wake_start_strategy = WakePhraseUserTurnStartStrategy(
         phrases=config.wake_phrases,
     )
-    speech_timeout_strategy = SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.6)
+    speech_timeout_strategy = SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.1)
 
     
     aggregators = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=vad_analyzer,
-            user_turn_strategies=UserTurnStrategies(
-                start=[wake_start_strategy],
-                stop=[speech_timeout_strategy],
-            ),
         ),
     )
     return aggregators
 
-
+# # Ollama #
+# def create_llm_service():
+    # llm = OLLamaLLMService(
+    #     settings=OLLamaLLMService.Settings(
+    #         model=config.llm_model,
+    #         system_instruction=config.system_prompt,
+    #     )
+    # )
+    
+# vLLM #
 def create_llm_service():
-    llm = OLLamaLLMService(
-        settings=OLLamaLLMService.Settings(
-            model=config.llm_model,
+    llm = OpenAILLMService(
+        api_key="vllm",  # A dummy string is required by the underlying OpenAI client
+        base_url="http://localhost:8000/v1", # Points to your local SSH tunnel
+        settings=OpenAILLMService.Settings(
+            system_instruction=config.system_prompt,
+            model="qwen3.5-9b", # Must exactly match --served-model-name from docker-compose
         )
     )
+    
     return llm
 
 
@@ -117,8 +112,10 @@ def create_tts_service():
     tts = KokoroTTSService(
         model_path=config.kokoro_model_path,
         voices_path=config.kokoro_voice_path,
+        text_filters=[md_filter],
         settings=KokoroTTSService.Settings(
-            voice="af_heart",
+            voice=config.kokoro_voice,
+            language=config.kokoro_language
         ),
     )
     

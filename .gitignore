@@ -226,5 +226,8 @@ node_modules/
 # ignore special package
 g2pW/
 
+# ignore tests folder
+tests/
+
 # git keep allowed
 !**/.gitkeep

@@ -14,6 +14,7 @@ class AppSettings(BaseSettings):
     whisper_model: Model = Model.LARGE
     whisper_compute_type: str = "default"
     whisper_no_speech_prob: float = 0.4
+    whisper_language: Language = Language.EN # replace
 
     # ------------------------------------ VAD ----------------------------------- #
     vad_confidence: float = 0.5
@@ -35,11 +36,13 @@ class AppSettings(BaseSettings):
     kokoro_voice_file_name: str = "voices-v1.0"
     kokoro_model_path: Path = Path(f"./models/kokoro/{kokoro_model_file_name}.onnx")
     kokoro_voice_path: Path = Path(f"./models/kokoro/{kokoro_voice_file_name}.bin")
+    kokoro_voice: str = "placeholder" # replace
+    kokoro_language: Language = Language.EN # replace
     
     # Piper #
     piper_model_path: Path = Path("./models/piper") # zh_CN-xiao_ya-medium / en_US-libritts-high
     piper_use_cuda: bool = True
-    piper_voice: str = "en_US-libritts-high"
+    piper_voice: str = "placeholder" # replace
 
     # ------------------------------ Pipeline Const ------------------------------ #
     audio_sample_rate: int = 16000
@@ -54,7 +57,9 @@ class AppSettings(BaseSettings):
 # ---------------------------------------------------------------------------- #
 class EngConfig(AppSettings):
     whisper_language: Language = Language.EN
-    piper_voice: str = "en_US-libritts_r-medium"
+    piper_voice: str = "en_US-libritts-high"
+    kokoro_voice: str = "af_heart"
+    kokoro_language: Language = Language.EN
     system_prompt: str = (
     """
     # Identity and Role:
@@ -74,6 +79,8 @@ class EngConfig(AppSettings):
 class ChineseConfig(AppSettings):
     whisper_language: Language = Language.ZH
     piper_voice: str = "zh_CN-xiao_ya-medium"
+    kokoro_voice: str = "zf_xiaobei"
+    kokoro_language: Language = Language.ZH
     system_prompt: str = (
     """
     # 身份與角色：
@@ -90,7 +97,7 @@ class ChineseConfig(AppSettings):
     """
         )
     
-config = ChineseConfig()
+config = EngConfig()
 
 # @property
 # def whisper_language(self) -> Language:

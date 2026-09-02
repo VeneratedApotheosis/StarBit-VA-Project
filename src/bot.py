@@ -22,9 +22,7 @@ async def run_bot(transport: BaseTransport) -> None:
     stt = services.create_stt_service()
     vad_analyzer = services.create_vad_analyzer()
     vad_processor = VADProcessor(vad_analyzer=vad_analyzer)
-
-    context = services.create_llm_context()
-    aggregators = services.create_llm_aggregators(context,vad_analyzer)
+    aggregators = services.create_llm_aggregators(vad_analyzer)
 
     llm = services.create_llm_service()
     tts = services.create_tts_service()
