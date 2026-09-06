@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pipecat Web Interface</title>
+  </head>
+  <body>
+    <h1>Pipecat Voice Assistant</h1>
+    
+    <div>
+      <strong>Status:</strong> <span id="connection-status">Disconnected</span>
+    </div>
+    
+    <button id="connect-btn">Start Conversation</button>
+    <button id="disconnect-btn" disabled>Stop Conversation</button>
+
+    <div id="debug-log" style="margin-top: 20px; height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; font-family: monospace;"></div>
+
+    <script type="module" src="/src/client.ts"></script>
+  </body>
+</html>

@@ -1,28 +1,44 @@
+import tools
+from config import config
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.frames.frames import (
+    AudioRawFrame,
+    Frame,
+    InputAudioRawFrame,
+    OutputAudioRawFrame,
+    TextFrame,
+)
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
     LLMUserAggregatorParams,
 )
+from pipecat.processors.filters.frame_filter import FrameFilter
+from pipecat.serializers.base_serializer import FrameSerializer
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.services.kokoro.tts import KokoroTTSService
-from pipecat.services.ollama.llm import OLLamaLLMService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.piper.tts import PiperTTSService, PiperTTSSettings
 from pipecat.services.whisper.stt import WhisperSTTService
-from pipecat.transports.local.audio import (
-    LocalAudioTransport,
-    LocalAudioTransportParams,
+from pipecat.transports.websocket.server import (
+    SingleClientWebsocketServerParams,
+    SingleClientWebsocketServerTransport,
 )
-from pipecat.turns.user_start import WakePhraseUserTurnStartStrategy
-from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
+from pipecat.turns.user_start import (
+    VADUserTurnStartStrategy,
+    WakePhraseUserTurnStartStrategy,
+)
+from pipecat.turns.user_stop import (
+    SpeechTimeoutUserTurnStopStrategy,
+    TurnAnalyzerUserTurnStopStrategy,
+)
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
 
-import tools
-from config import config
 
-
+# --------------------------------- services --------------------------------- #
 def create_stt_service() -> WhisperSTTService:
     stt = WhisperSTTService(
         settings=WhisperSTTService.Settings(
@@ -38,7 +54,7 @@ def create_stt_service() -> WhisperSTTService:
 
 def create_vad_analyzer() -> SileroVADAnalyzer:
     vad_analyzer = SileroVADAnalyzer(
-        sample_rate=config.audio_sample_rate,
+        sample_rate=config.audio_in_sample_rate,
         params=VADParams(
             confidence=config.vad_confidence,
             start_secs=config.vad_start_secs,
@@ -55,14 +71,30 @@ def create_llm_aggregators(vad_analyzer: SileroVADAnalyzer):
     
     wake_start_strategy = WakePhraseUserTurnStartStrategy(
         phrases=config.wake_phrases,
+        timeout=5.0,
     )
-    speech_timeout_strategy = SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.1)
-
+    vad_strategy = VADUserTurnStartStrategy()
     
+    speech_timeout_strategy = SpeechTimeoutUserTurnStopStrategy(
+        user_speech_timeout=1.5,    
+        single_activation=True,
+    )
+    smart_stop_strategy = TurnAnalyzerUserTurnStopStrategy(
+        turn_analyzer=LocalSmartTurnAnalyzerV3(),
+        wait_for_transcript=False,
+    )
+    
+    start_strategies = [wake_start_strategy, vad_strategy]
+    stop_strategies= []
+
+
     aggregators = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(
             vad_analyzer=vad_analyzer,
+            user_turn_strategies=UserTurnStrategies(
+                start=start_strategies,
+            ),
         ),
     )
     return aggregators
@@ -79,11 +111,11 @@ def create_llm_aggregators(vad_analyzer: SileroVADAnalyzer):
 # vLLM #
 def create_llm_service():
     llm = OpenAILLMService(
-        api_key="vllm",  # A dummy string is required by the underlying OpenAI client
-        base_url="http://localhost:8000/v1", # Points to your local SSH tunnel
+        api_key=config.llm_api_key,
+        base_url=config.llm_base_url,
         settings=OpenAILLMService.Settings(
             system_instruction=config.system_prompt,
-            model="qwen3.5-9b", # Must exactly match --served-model-name from docker-compose
+            model=config.llm_model
         )
     )
     
@@ -122,12 +154,20 @@ def create_tts_service():
     return tts
 
 def create_transport():
-    transport = LocalAudioTransport(
-        LocalAudioTransportParams(
+    transport = SingleClientWebsocketServerTransport(
+        host=config.ws_host,
+        port=config.ws_port,
+        params=SingleClientWebsocketServerParams(
             audio_in_enabled=True,
-            audio_in_sample_rate=config.audio_sample_rate,  # silero expects 8kHz or 16000Hz (16k recommended)
+            audio_in_sample_rate=config.audio_in_sample_rate,
             audio_out_enabled=True,
-            audio_out_sample_rate=config.audio_sample_rate,
+            audio_out_sample_rate=config.audio_out_sample_rate,
+            serializer = ProtobufFrameSerializer()
         )
     )
     return transport
+
+def create_frame_filter():
+    types = (AudioRawFrame)
+    frame_filter = FrameFilter(types=types)
+    return frame_filter

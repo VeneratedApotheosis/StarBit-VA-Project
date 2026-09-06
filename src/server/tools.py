@@ -2,10 +2,9 @@ import asyncio
 import functools
 
 import aiohttp
+import utility
 from pipecat.adapters.schemas.direct_function import tool_options
 from pipecat.services.llm_service import FunctionCallParams
-
-import utility
 
 REGISTERED_TOOLS = []
 # ---------------------------------------------------------------------------- #

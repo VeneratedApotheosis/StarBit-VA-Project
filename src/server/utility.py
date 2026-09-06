@@ -2,9 +2,8 @@
 import asyncio
 from datetime import datetime, timezone
 
-from asyncddgs import aDDGS
-
 import http_client
+from asyncddgs import aDDGS
 from config import config
 
 # ---------------------------------------------------------------------------- #

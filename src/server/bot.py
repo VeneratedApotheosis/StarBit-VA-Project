@@ -1,41 +1,38 @@
-from pipecat.processors.audio.vad_processor import VADProcessor
-from pipecat.pipeline.pipeline import Pipeline
-from pipecat.workers.runner import WorkerRunner
-from pipecat.pipeline.worker import PipelineParams, PipelineWorker
-from pipecat.observers.loggers.debug_log_observer import DebugLogObserver
-from pipecat.transports.base_transport import BaseTransport
-from pipecat.observers.loggers.transcription_log_observer import (
-    TranscriptionLogObserver,
-)
+import asyncio
+
+import services
+from debug import LLMResponsePrinter
 from pipecat.frames.frames import (
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame,
 )
+from pipecat.observers.loggers.debug_log_observer import DebugLogObserver
+from pipecat.observers.loggers.transcription_log_observer import (
+    TranscriptionLogObserver,
+)
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.worker import PipelineParams, PipelineWorker
+from pipecat.processors.audio.vad_processor import VADProcessor
+from pipecat.processors.frameworks.rtvi import RTVIObserverParams
+from pipecat.transports.base_transport import BaseTransport
+from pipecat.workers.runner import WorkerRunner
 
-import asyncio
-
-from debug import LLMResponsePrinter
-import services
 
 async def run_bot(transport: BaseTransport) -> None:
-
+    # declare all services
     stt = services.create_stt_service()
     vad_analyzer = services.create_vad_analyzer()
-    vad_processor = VADProcessor(vad_analyzer=vad_analyzer)
     aggregators = services.create_llm_aggregators(vad_analyzer)
 
     llm = services.create_llm_service()
     tts = services.create_tts_service()
 
-    # declare pipeline
     pipeline = Pipeline(
         [
             transport.input(),
-            vad_processor,
             stt,
             aggregators.user(),
             llm,
-            LLMResponsePrinter(),
             tts,
             transport.output(),
             aggregators.assistant(),
@@ -53,7 +50,7 @@ async def run_bot(transport: BaseTransport) -> None:
                 UserStartedSpeakingFrame,
                 UserStoppedSpeakingFrame,
             )
-        ),
+        )
     ]
 
     # declare work and runner
@@ -62,30 +59,37 @@ async def run_bot(transport: BaseTransport) -> None:
         params=PipelineParams(
             allow_interruptions=True,
             # enable_metrics=True,
-            vad_analyzer=vad_analyzer,
             observers=observers,
+        ),
+        # specific to the rtvi observer, as the rtvi observer is attached when worker is declared
+        rtvi_observer_params=RTVIObserverParams(
+            bot_llm_enabled=False,
+            metrics_enabled=False,
         ),
     )
 
     runner = WorkerRunner(handle_sigint=False)
-
     await runner.add_workers(worker)
 
-    try:
-        print("Starting pipeline... Press Ctrl+C to stop.")
-        await runner.run()
+    @transport.event_handler("on_client_connected")
+    async def on_client_connected(transport, websocket):
+        print("Client connected.")
 
+    @transport.event_handler("on_client_disconnected")
+    async def on_client_disconnected(transport, websocket):
+        print("Client disconnected.")
+
+    try:
+        print(f"Starting WebSocket server... Press Ctrl+C to stop.")
+        await runner.run()
     except KeyboardInterrupt:
         print("Shutting down...")
-    finally:
-        pass
-
 
 async def main():
-    # config audio transport
+    """Main bot entry point."""
+    
     transport = services.create_transport()
     await run_bot(transport)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

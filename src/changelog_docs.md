@@ -86,4 +86,15 @@ async def tool_name(params: FunctionCallParams, ...):
 
 utility contains logic and implementation, tools contains control flow and tool definitions.
 
-IMPLEMENTED MARKDOWN FILTER
+ADDED KOKORO TTS SUPPORT
+
+ADDED OPENAI LLM API SUPPORT
+
+currently primarily connects to a llm on a seperate server in the local network, which uses openai llm service. 
+the llm is running on linux through vllm running in a docker instance
+
+added routes tool
+
+complete project overhaul, seperated mic and speaker audio in out to a webclient, server does all processing, streaming audio in and out to webclient
+
+implements single websocket connection from server to client
