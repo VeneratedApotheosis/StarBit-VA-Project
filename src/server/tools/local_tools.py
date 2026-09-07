@@ -2,9 +2,9 @@ import asyncio
 import functools
 
 import aiohttp
-import utility
 from pipecat.adapters.schemas.direct_function import tool_options
 from pipecat.services.llm_service import FunctionCallParams
+from tools import utility
 
 REGISTERED_TOOLS = []
 # ---------------------------------------------------------------------------- #
@@ -62,11 +62,11 @@ async def get_time_tool(params: FunctionCallParams):
 @tool_options(cancel_on_interruption=True, timeout_secs=30)
 @safe_tool
 async def get_geocode_tool(params: FunctionCallParams, place: str, language: str):
-    """Searches for geographic coordinates (latitude and longitude) given a location name (and optionally language of the place string). 
+    """Searches for geographic coordinates (latitude and longitude) given a location name (and optionally language). 
     
     Args:
-        place: The name of the city, region, or landmark to geocode (e.g., 'Paris, France' or 'Tokyo').
-        language: Two-letter ISO language code that argument or parameter "place" was written in  (e.g., 'en', 'zh').
+        place: Location name or postal code. Append the full, unabbreviated name of country after a comma to narrow the results.
+        language: Two-letter ISO language code. Return translated results, if available, otherwise return english or the native location name. Lower-cased.
     """
     geo_data = await utility.get_geocode(place=place, language=language)
     
@@ -80,13 +80,13 @@ async def get_geocode_tool(params: FunctionCallParams, place: str, language: str
 @tool_options(cancel_on_interruption=True, timeout_secs=30)
 @safe_tool
 async def get_current_forecast_tool(params: FunctionCallParams, place: str, language: str):
-    """Provides the CURRENT weather forecast at given place (and optionally language of the place string). 
+    """Provides the CURRENT weather forecast at given place (and optionally language).
     
     Returns current weather forecast including 'weather_description', 'temperature', 'apparent_temperature', 'relative_humidity', 'wind_speed', 'cloud_cover', and 'precipitation'.
     
     Args:
-        place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
-        language: Two-letter ISO language code that argument or parameter "place" was written in (e.g., 'en', 'zh').
+        place: Location name or postal code. Append a country or first-level administrative area after a comma to narrow the results.
+        language: Two-letter ISO language code. Return translated results, if available, otherwise return english or the native location name. Lower-cased.
     """
     
     # fetch relevant geographic data
@@ -103,15 +103,15 @@ async def get_current_forecast_tool(params: FunctionCallParams, place: str, lang
 @tool_options(cancel_on_interruption=True, timeout_secs=30)
 @safe_tool
 async def get_daily_forecast_tool(params: FunctionCallParams, place: str, language: str, start_date: str, end_date: str):
-    """Provides daily weather forecasts over a range of dates for a specified location (and optionally language of the place string).
+    """Provides daily weather forecasts over a range of dates for a specified location (and optionally language).
 
     Returns daily metrics including weather description, maximum temperature, 
     minimum temperature, total precipitation, and maximum wind speed for each day 
     between the start and end dates.
 
     Args:
-        place: The name of the city, region, or landmark (e.g., 'Paris, France' or 'Tokyo').
-        language: Two-letter ISO language code that argument or parameter "place" was written in (e.g., 'en', 'zh').
+        place: Location name or postal code. Append a country or first-level administrative area after a comma to narrow the results.
+        language: Two-letter ISO language code. Return translated results, if available, otherwise return english or the native location name. Lower-cased.
         start_date: The start date of the forecast range in 'YYYY-MM-DD' format.
         end_date: The end date of the forecast range in 'YYYY-MM-DD' format.
     """
@@ -172,6 +172,6 @@ async def get_route_tool(params: FunctionCallParams, origin: str, destination: s
     
     await params.result_callback(pruned_data)
     
-def get_tools():
+def get_local_tools() -> list:
     return REGISTERED_TOOLS
 

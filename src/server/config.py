@@ -29,6 +29,8 @@ class AppSettings(BaseSettings):
     md_filter_code: bool = True
     md_filter_tables: bool = True
     md_filter_repeated_sequences: bool = True
+
+    ZH_filter_enabled: bool = False
     
     kokoro_model_file_name: str = "kokoro-v1.0"
     kokoro_voice_file_name: str = "voices-v1.0"
@@ -48,11 +50,14 @@ class AppSettings(BaseSettings):
     ws_port: int = int(os.getenv("WS_PORT", "8765"))
 
     google_routes_api_key: str = os.getenv("GOOGLE_ROUTES_API_KEY", "dummy")
+    
+    mcp_url: str = os.getenv("MCP_URL", "https://twenty-understood-phenomenon-lodging.trycloudflare.com/mcp")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-class EngConfig(AppSettings):
+class ENconf(AppSettings):
     whisper_language: Language = Language.EN
+    ZH_filter_enabled: bool = False
     piper_voice: str = "en_US-libritts-high"
     kokoro_voice: str = "af_heart"
     kokoro_language: Language = Language.EN
@@ -70,23 +75,24 @@ class EngConfig(AppSettings):
     1. Autonomous Decision-Making: Call tools automatically whenever you lack sufficient context. 
     """
     
-class ChineseConfig(AppSettings):
+class ZHconf(AppSettings):
     whisper_language: Language = Language.ZH
+    ZH_filter_enabled: bool = False
     piper_voice: str = "zh_CN-xiao_ya-medium"
-    kokoro_voice: str = "zf_xiaobei"
+    kokoro_voice: str = "zm_yundao"
     kokoro_language: Language = Language.ZH
     system_prompt: str = """
-    # 身份與角色：
-    你是 Tina，一個智慧、有幫助且主動的語音 AI 助理。你的主要功能是回答使用者的提問。
+    # 身份与角色：
+    你是 Tina，一个智慧、有帮助且主动的语音 AI 助理。你的主要功能是回答使用者的提问。除非另有说明，所有内容均以简体中文输出。 
 
-    # 格式與輸出規則：
-    你的輸出將透過文字轉語音（TTS）引擎直接轉為音訊。你必須遵守以下語音格式規則：
-    1. 僅使用平實的口語表達。回應內容只能包含標準文字、數字、空格、句號、逗號及問號。
-    2. 盡量以單句回答。回應長度嚴禁超過三句話。
+    # 格式与输出规则：
+    你的输出将透过文字转语音（TTS）引擎直接转为音讯。你必须遵守以下语音格式规则：
+    1. 仅使用平实的口语表达。回应内容只能包含标准文字、数字、空格、句号、逗号及问号。 
+    2. 尽量以单句回答。回应长度严禁超过三句话。 
 
-    #工具使用邏輯：
-    你可以使用內部工具來檢索資訊並代表使用者執行操作。
-    1. 自主決策：每當缺乏足夠的上下文時，自動呼叫工具。
+    #工具使用逻辑：
+    你可以使用内部工具来检索资讯并代表使用者执行操作。 
+    1. 自主决策：每当缺乏足够的上下文时，自动呼叫工具。
     """
     
-config = EngConfig()
+config = ENconf()

@@ -22,7 +22,7 @@ async def run_bot(transport: BaseTransport) -> None:
     # declare all services
     stt = services.create_stt_service()
     vad_analyzer = services.create_vad_analyzer()
-    aggregators = services.create_llm_aggregators(vad_analyzer)
+    aggregators = await services.create_llm_aggregators(vad_analyzer)
 
     llm = services.create_llm_service()
     tts = services.create_tts_service()
@@ -58,13 +58,13 @@ async def run_bot(transport: BaseTransport) -> None:
         pipeline,
         params=PipelineParams(
             allow_interruptions=True,
-            # enable_metrics=True,
+            enable_metrics=True,
             observers=observers,
         ),
         # specific to the rtvi observer, as the rtvi observer is attached when worker is declared
         rtvi_observer_params=RTVIObserverParams(
             bot_llm_enabled=False,
-            metrics_enabled=False,
+            metrics_enabled=True,
         ),
     )
 

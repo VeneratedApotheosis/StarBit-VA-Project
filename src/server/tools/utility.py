@@ -2,7 +2,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-import http_client
+import core.http_client as http_client
 from asyncddgs import aDDGS
 from config import config
 
