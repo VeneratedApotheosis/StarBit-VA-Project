@@ -172,6 +172,28 @@ async def get_route_tool(params: FunctionCallParams, origin: str, destination: s
     
     await params.result_callback(pruned_data)
     
+@register_tool
+@tool_options(cancel_on_interruption=True, timeout_secs=30)
+@safe_tool
+async def query_sales_performance_tool(params: FunctionCallParams, start_date: str, end_date: str):
+    """Queries total sales revenue and transaction records from STARBIT database.
+
+    Args:
+        start_date: The start date in 'YYYYMMDD' format (e.g., '20250101').
+        end_date: The end date in 'YYYYMMDD' format (e.g., '20250131').
+    """
+    sales_data = await utility.fetch_sales_performance(start_date=start_date, end_date=end_date)
+    
+    total_revenue = sum(item["sales_amount"] for item in sales_data)
+    
+    pruned_payload = {
+        "record_count": len(sales_data),
+        "total_revenue_twd": round(total_revenue, 2),
+        "records": sales_data[:50]  # Limit context length
+    }
+    
+    await params.result_callback(pruned_payload)
+
 def get_local_tools() -> list:
     return REGISTERED_TOOLS
 

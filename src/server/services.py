@@ -37,6 +37,7 @@ from pipecat.turns.user_stop import (
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.utils.text.base_text_filter import BaseTextFilter
 from pipecat.utils.text.markdown_text_filter import MarkdownTextFilter
+from pipecat_xtts_vllm import XTTSVLLMTTSService
 
 
 # ---------------------------------- Helper ---------------------------------- #
@@ -62,7 +63,7 @@ def create_stt_service() -> WhisperSTTService:
     stt = WhisperSTTService(
         settings=WhisperSTTService.Settings(
             model=config.whisper_model,
-            # language=config.whisper_language,
+            language=config.whisper_language,
             no_speech_prob=config.whisper_no_speech_prob,
         ),
         device=config.whisper_device,
@@ -162,11 +163,18 @@ def create_tts_service():
     tts = PiperTTSService(
         download_dir=config.piper_model_path,
         use_cuda=config.piper_use_cuda,
-        text_filters=[md_filter],
+        text_filters=filters,
         settings=PiperTTSService.Settings(
             voice=config.piper_voice,
         ),
     )
+    
+    # # xTTS
+    # tts = XTTSVLLMTTSService(
+    #     base_url=config.xtts_base_url,
+    #     reference_audio=config.xtts_reference_audio.read_bytes(),
+    #     language=config.xtts_language,
+    # )
     
     return tts
 

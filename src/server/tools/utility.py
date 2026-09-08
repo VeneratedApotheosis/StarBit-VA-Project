@@ -2,9 +2,10 @@
 import asyncio
 from datetime import datetime, timezone
 
-import core.http_client as http_client
 from asyncddgs import aDDGS
 from config import config
+from core import http_client
+from core.mssql_client import db_client
 
 # ---------------------------------------------------------------------------- #
 #                             Boilerplate / Helper                             #
@@ -37,6 +38,8 @@ class SearchNotFoundError(UtilityError):
     """Raised when a web search returns no results."""
 class RouteNotFoundError(UtilityError):
     """Raised when the routing API finds no route between points."""
+class DatabaseQueryError(UtilityError):
+    """Raised when an MSSQL query fails to execute."""
 
 # ------------------------------- normalization ------------------------------ #
 def format_measurement(field: str, data: dict, units: dict) -> str:
@@ -286,6 +289,38 @@ async def get_route(origin: str, destination: str, travel_mode: str = "DRIVE") -
     
     # return payload if everything is fine
     return normalized
+
+# MsSQL #
+async def fetch_sales_performance(start_date: str, end_date: str) -> list[dict]:
+    """Queries confirmed sales records from STARBIT.dbo.COPTG for a date range (YYYYMMDD)."""
+    if not start_date or not end_date:
+        raise UtilityError("Both 'start_date' and 'end_date' parameters are required.")
+
+    query = """
+        SELECT 
+            TG003 AS sales_date,
+            TG007 AS customer_name,
+            TG045 AS sales_amount
+        FROM STARBIT.dbo.COPTG
+        WHERE TG023 = 'Y'
+          AND TG003 >= ?
+          AND TG003 <= ?;
+    """
+    params = (start_date, end_date)
+
+    try:
+        raw_results = await asyncio.to_thread(db_client.execute_query, query, params)
+    except Exception as e:
+        raise DatabaseQueryError(f"Database operation failed: {e!s}")
+
+    return [
+        {
+            "sales_date": str(row["sales_date"]).strip(),
+            "customer_name": str(row["customer_name"]).strip(),
+            "sales_amount": float(row["sales_amount"]) if row["sales_amount"] is not None else 0.0
+        }
+        for row in raw_results
+    ]
 
 async def mainfr():
     print("=== Testing Utility Functions ===")

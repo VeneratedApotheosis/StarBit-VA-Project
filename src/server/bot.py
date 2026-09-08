@@ -33,6 +33,7 @@ async def run_bot(transport: BaseTransport) -> None:
             stt,
             aggregators.user(),
             llm,
+            LLMResponsePrinter(),
             tts,
             transport.output(),
             aggregators.assistant(),

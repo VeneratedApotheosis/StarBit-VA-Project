@@ -18,7 +18,7 @@ class WebSocketApp {
   private wsUrl: string;
 
   constructor() {
-    this.wsUrl = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:8765';
+    this.wsUrl = 'ws://192.168.50.131:8765';
     this.setupDOMElements();
     this.setupDOMEventListeners();
     this.initializePipecatClient();

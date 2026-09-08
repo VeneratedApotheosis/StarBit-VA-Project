@@ -12,6 +12,7 @@ dependencies = [
     "g2pw>=0.1.1",
     "jieba>=0.42.1",
     "misaki[zh]>=0.9.4",
+    "mssql-python>=1.14.0",
     "nltk>=3.10.1",
     "ollama>=0.6.2",
     "onnxruntime>=1.24.4",
